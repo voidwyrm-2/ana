@@ -1,0 +1,4 @@
+; Example module for import
+MyFun  (x) {
+    return x * 2.
+}. 

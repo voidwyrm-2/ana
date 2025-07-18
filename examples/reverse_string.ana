@@ -1,0 +1,20 @@
+; Example: Manual String Reversal in Ana using built-in Len and Index
+require "std/io".
+
+; Define a function to reverse a string
+ReverseStr ← λ (s) {
+    RevRec ← λ (s, i, acc) {
+        if (i < 0) {
+            return acc.
+        }
+        ch ← Index [s, i].
+        return RevRec [s, i - 1, acc + ch].
+    }.
+    return RevRec [s, Len [s] - 1, ""].
+}.
+
+original ← "hello world".
+reversed ← ReverseStr [original].
+
+io→Outln ["Original:", original].
+io→Outln ["Reversed:", reversed]. 
