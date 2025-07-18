@@ -354,11 +354,11 @@ impl AnaValue {
     }
 
     pub fn op(&self, operation: &TokenType, other: &AnaValue) -> Result<AnaValue, AnaError> {
-        // String concatenation: always allow string + string
+        // String concatenation: only allow string ⊂ string
         if let AnaValue::String(str) = self {
             if let AnaValue::String(other_str) = other {
                 match *operation {
-                    TokenType::Concat | TokenType::Add => return Ok(AnaValue::String(str.clone() + other_str)),
+                    TokenType::Concat => return Ok(AnaValue::String(str.clone() + other_str)),
                     TokenType::Equals => return Ok(ana_bool!(*str == *other_str)),
                     TokenType::NotEquals => return Ok(ana_bool!(*str != *other_str)),
                     _ => {
