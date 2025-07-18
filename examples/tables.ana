@@ -1,0 +1,12 @@
+require "std/io".
+require "std/table".
+
+t ← table→Create [].
+
+io→Outln [Typeof [t]].
+
+table→Insert [t, "the_answer", 42].
+
+the_answer ← table→Get [t, "the_answer"].
+
+io→Outln [the_answer, t→the_answer].

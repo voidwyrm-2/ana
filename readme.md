@@ -46,3 +46,7 @@ cd ana
 cargo build --release
 ./target/release/ana examples/hello.ana
 ```
+
+## Future Development
+
+For an idea of what's planned, read [todo.md](./todo.md).
