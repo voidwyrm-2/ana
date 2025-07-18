@@ -11,12 +11,15 @@
 ## Stdlib Modules
 
 - [ ] builtins
-    - [ ] `Exit [Int] -> Unit`
-    - [ ] `Error [...Any] -> Error`
-    - [ ] `Len [Any] -> Int`
-    - [ ] `Get [Any, Any] -> Error|Any`
-    - [ ] `Set [Any, Any] -> Error|Any`
+    - [ ] `Exit [Int code] -> Unit`
+    - [ ] `Error [Any... args] -> Error`
+    - [ ] `Len [Any obj] -> Int`
+    - [ ] `Get [Any obj, Any index] -> Error|Any`
+    - [ ] `Set [Any obj, Any index, Any value] -> Error|Any`
 - [x] `io`
+    - [ ] `Out [String... args] -> Unit`
+    - [ ] `Outc [Int char] -> Unit`
+    - [ ] `Outf [String fmt, Any... args] -> Unit`
     - [ ] `OpenFile [String path, String mode] -> Error|File`
 - [ ] `tables`
     - [x] `Create [] -> Table`
