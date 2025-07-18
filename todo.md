@@ -3,9 +3,9 @@
 ## Language Features
 
 - [x] Method operator (analogous to Lua's `:`)
-- [ ] Library module importing
-- [ ] Local module importing
 - [ ] Error Handling
+- [ ] Local module importing
+- [ ] Library module importing
 
 ## Stdlib Modules
 
