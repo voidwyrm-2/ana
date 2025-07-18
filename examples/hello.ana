@@ -1,0 +1,5 @@
+require "std/io".
+
+hello ← "Meow!".
+
+io→Outln [hello].

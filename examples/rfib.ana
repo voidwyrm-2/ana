@@ -1,0 +1,15 @@
+require "std/io".
+
+Fib ← λ (n) {
+    if (n < 1) {
+        return 0.
+    } else if (n = 1) {
+        return 1.
+    }
+
+    return Fib [n - 1] + Fib [n - 2].
+}.
+
+result ← Fib [10].
+
+io→Outln [result].

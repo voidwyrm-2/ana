@@ -1,0 +1,8 @@
+require "std/io".
+
+InfFun ← λ () {
+    io→Outln ["Meow!"].
+    InfFun [].
+}.
+
+InfFun [].

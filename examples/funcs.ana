@@ -1,0 +1,7 @@
+require "std/io".
+
+hello_fun ← λ (animal, sound) {
+    io→Outln [animal, "says", sound].
+}.
+
+hello_fun ["Cat", "meow!"].

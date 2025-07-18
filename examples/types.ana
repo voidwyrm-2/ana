@@ -1,0 +1,13 @@
+require "std/io".
+
+uni ← Unit.
+str ← "Never gonna give you up".
+int ← 42.
+
+uni_kind ← Typeof [uni].
+str_kind ← Typeof [str].
+int_kind ← Typeof [int].
+
+io→Outln [uni, "is type", uni_kind].
+io→Outln [str, "is type", str_kind].
+io→Outln [int, "is type", int_kind].

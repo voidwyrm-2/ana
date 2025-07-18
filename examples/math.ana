@@ -1,0 +1,34 @@
+; Importing
+require "std/io".
+
+; Local modules would be imported as
+; Δ "local_module".
+; This would read from ./local_module.ana
+
+; Library modules would be imported as
+; Δ "lib/ext_module".
+; This would read from ~/.ana/lib/ext_module.ana
+
+
+; Binding creation and various expressions
+val ← 2 * 20.
+
+another ← 3 * 20.
+
+third ← val + another.
+
+str ← "Hello there".
+
+trans_str ← str + 1.
+
+ls ← [1, 2, 3].
+
+another_ls ← [2, 4, 6] * ls.
+
+third_str ← "0123456789" - 48.
+
+fourth_str ← "Hello" - [1, 2, 3, 4, 5].
+
+
+; Function calls
+io→Outln [val].

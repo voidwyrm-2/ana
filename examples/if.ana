@@ -1,0 +1,36 @@
+require "std/io".
+
+first_cond ← true.
+
+if (first_cond) {
+    io→Outln ["Hello from the first condition!"].
+}
+
+another_cond ← false.
+
+if (another_cond) {
+    io→Outln ["Hello from the second true condition!"].
+} else {
+    io→Outln ["Hello from the second false condition!"].
+}
+
+TestFun ← λ (b) {
+    if (b) {
+        io→Outln ["First"].
+        return Unit.
+    }
+
+    io→Outln ["Second"].
+}.
+
+TestFun [false].
+
+last_cond ← 0.
+
+if (last_cond = 0) {
+    io→Outln ["Last is zero!"].
+} else if (last_cond = 1) {
+    io→Outln ["Last is one!"].
+} else {
+    io→Outln ["Last is a different number!"].
+}
