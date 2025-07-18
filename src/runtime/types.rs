@@ -354,6 +354,22 @@ impl AnaValue {
     }
 
     pub fn op(&self, operation: &TokenType, other: &AnaValue) -> Result<AnaValue, AnaError> {
+        // String concatenation: always allow string + string
+        if let AnaValue::String(str) = self {
+            if let AnaValue::String(other_str) = other {
+                match *operation {
+                    TokenType::Concat | TokenType::Add => return Ok(AnaValue::String(str.clone() + other_str)),
+                    TokenType::Equals => return Ok(ana_bool!(*str == *other_str)),
+                    TokenType::NotEquals => return Ok(ana_bool!(*str != *other_str)),
+                    _ => {
+                        return Err(AnaError::from(format!(
+                            "unsupported operation {:?} for String + String",
+                            operation
+                        )));
+                    }
+                }
+            }
+        }
         if let AnaValue::Seq(arr) = self {
             if let AnaValue::Seq(other_arr) = other {
                 if *operation == TokenType::Concat {
@@ -396,19 +412,6 @@ impl AnaValue {
 
                 Ok(AnaValue::Seq(new_arr))
             }
-        } else if let AnaValue::String(str) = self {
-            if let AnaValue::String(other_str) = other {
-                match *operation {
-                    TokenType::Concat => return Ok(AnaValue::String(str.clone() + other_str)),
-                    TokenType::Equals => return Ok(ana_bool!(*str == *other_str)),
-                    TokenType::NotEquals => return Ok(ana_bool!(*str != *other_str)),
-                    _ => (),
-                }
-            }
-
-            let own_seq = self.cast(AnaType::Seq)?;
-
-            own_seq.op(operation, other)
         } else {
             let own_casted = if is_altcast(operation, other) && self.kind() != other.kind() {
                 self.cast(other.kind())?

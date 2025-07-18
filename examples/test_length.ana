@@ -1,0 +1,13 @@
+require "std/io".
+
+
+s ← "hello".
+i ← 0.
+
+io→Outln ["io is:", io].
+io→Outln [Index [s, 0]].
+io→Outln [Index [s, 1]].
+io→Outln [Index [s, 2]].
+io→Outln [Index [s, 3]].
+io→Outln [Index [s, 4]].
+io→Outln [Index [s, 5]]. ; Out of bounds

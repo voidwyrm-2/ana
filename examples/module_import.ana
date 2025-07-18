@@ -1,0 +1,10 @@
+; Example: Module Import in Ana
+; This assumes you have a file called mymod.ana in the same directory.
+require "std/io".
+94 "mymod".
+
+; Suppose mymod.ana defines a function MyFun
+result MyFun [42].
+io Outln ["Result from MyFun:", result].
+
+; See mymod.ana for the definition of MyFun. 

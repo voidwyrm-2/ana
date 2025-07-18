@@ -1,0 +1,8 @@
+require "std/io".
+
+s ← "hello".
+len ← Len [s].
+io→Outln ["Length of s:", len].
+
+ch ← Index [s, 1].
+io→Outln ["Second character:", ch].

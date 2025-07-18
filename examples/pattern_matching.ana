@@ -1,0 +1,5 @@
+; Example: Pattern Matching in Ana
+require "std/io".
+
+; Ana does not currently support pattern matching or switch/case constructs.
+ioOutln ["Pattern matching is not supported in Ana."] 
