@@ -47,6 +47,7 @@
 ## Internal
 
 - [x] Argument count and type verification for stdlib functions
+- [ ] Allow for stdlib modules to be written in ANA
 
 ## Ecosystem
 
