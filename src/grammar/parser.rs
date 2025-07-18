@@ -156,7 +156,7 @@ impl Parser {
         } else {
             Err(token_anaerr!(
                 t,
-                "expected token {:?}, but found {:?} instead",
+                "expected token '{}', but found '{}' instead",
                 tt,
                 t.get_typ(),
             ))
@@ -365,7 +365,7 @@ impl Parser {
                 if *self.cur().get_typ() != TokenType::ParenRight {
                     return Err(token_anaerr!(
                         lct,
-                        "unexpected token {:?} in expression",
+                        "unexpected token '{}' in expression",
                         lct.get_typ(),
                     ));
                 }
@@ -385,7 +385,7 @@ impl Parser {
             _ => {
                 return Err(token_anaerr!(
                     lct,
-                    "unexpected token {:?} in expression",
+                    "unexpected token '{}' in expression",
                     lct.get_typ(),
                 ));
             }
@@ -416,7 +416,7 @@ impl Parser {
                 _ => {
                     return Err(token_anaerr!(
                         opt,
-                        "unexpected operator token {:?} in expression",
+                        "unexpected operator token '{}' in expression",
                         opt.get_typ(),
                     ))
                 }
@@ -474,7 +474,7 @@ impl Parser {
                 self.eat();
                 break;
             } else if *cur.get_typ() != TokenType::Comma {
-                unreachable!("expected Comma, but found {:?} instead", cur.get_typ())
+                unreachable!("expected Comma, but found '{}' instead", cur.get_typ())
             }
         }
 
@@ -602,7 +602,7 @@ impl Parser {
 
                     continue;
                 }
-                _ => return Err(token_anaerr!(cur, "unexpected token {:?}", cur.get_typ(),)),
+                _ => return Err(token_anaerr!(cur, "unexpected token '{}'", cur.get_typ(),)),
             }
 
             let t = self.next().clone();
@@ -619,7 +619,7 @@ impl Parser {
         if let Some(rt) = self.pop_refered() {
             Err(token_anaerr!(
                 rt.token(),
-                "unexpected token {:?}",
+                "unexpected token '{}'",
                 rt.token().get_typ(),
             ))
         } else {

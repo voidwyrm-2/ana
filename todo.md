@@ -27,6 +27,15 @@
     - [ ] `FromSeq [Seq(Int) chars] -> Error|String`
     - [ ] `ToSeq [String self] -> Seq(Int)`
     - [ ] `Split [String self, String sep] -> Seq(String)`
+- [ ] `http`
+    - [ ] `Get [String url] -> Error|Request`
+    - [ ] `Post [String url, String data] -> Error|Request`
+    - [ ] `Put [String url, String data] -> Error|Request`
+    - [ ] `Delete [String url] -> Error|Request`
+- [ ] `meta`
+    - [ ] `Eval [String expr] -> Error|Any`
+    - [ ] `Exec [String program] -> Error|Table`
+    - [ ] `GetLocals [] -> Seq(Seq(String, Any))`
 - [ ] `ffi`
     - [ ] `LoadNative [String name] -> Error|FFIModule`
     - [ ] `LoadWasm [String name] -> Error|FFIModule`

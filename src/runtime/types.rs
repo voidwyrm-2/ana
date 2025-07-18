@@ -89,7 +89,7 @@ macro_rules! err_uncastable {
 macro_rules! err_invalid_operation {
     ($left:expr, $right:expr, $operation:expr) => {
         Err(AnaError::from(format!(
-            "cannot use operator {:?} on {} and {} (type of {})",
+            "cannot use operator '{}' on {} and {} (type of {})",
             $operation,
             $left,
             $right,
@@ -363,7 +363,7 @@ impl AnaValue {
                     TokenType::NotEquals => return Ok(ana_bool!(*str != *other_str)),
                     _ => {
                         return Err(AnaError::from(format!(
-                            "unsupported operation {:?} for String + String",
+                            "unsupported operation '{}' for String + String",
                             operation
                         )));
                     }

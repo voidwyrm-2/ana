@@ -5,10 +5,7 @@ use std::{
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::{
-    common::{try_index, AnaError},
-    token_err,
-};
+use crate::common::{try_index, AnaError};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenType {
@@ -39,6 +36,56 @@ pub enum TokenType {
     BracketRight,
     BraceLeft,
     BraceRight,
+}
+
+impl Into<String> for TokenType {
+    fn into(self) -> String {
+        let str = match self {
+            Self::Int(v) => v.to_string(),
+            Self::Float(v) => v.to_string(),
+            Self::String(v) => format!("\"{}\"", v),
+            Self::Ident(v) => v,
+            _ => match self {
+                Self::Int(_) => unreachable!(),
+                Self::Float(_) => unreachable!(),
+                Self::String(_) => unreachable!(),
+                Self::Ident(_) => unreachable!(),
+                Self::Eof => "Eof",
+                Self::StatementEnding => ";",
+                Self::Add => "+",
+                Self::Concat => "⊂",
+                Self::Subtract => "-",
+                Self::Multiply => "*",
+                Self::Divide => "/",
+                Self::Modulus => "%",
+                Self::Equals => "=",
+                Self::NotEquals => "≠",
+                Self::LessThan => "<",
+                Self::GreaterThan => ">",
+                Self::Bind => "←",
+                Self::IdentPathSep => "→",
+                Self::MethodOf => "⇒",
+                Self::Function => "λ",
+                Self::Comma => ",",
+                Self::ParenLeft => "(",
+                Self::ParenRight => ")",
+                Self::BracketLeft => "[",
+                Self::BracketRight => "]",
+                Self::BraceLeft => "(",
+                Self::BraceRight => ")",
+            }
+            .to_string(),
+        };
+
+        str.to_string()
+    }
+}
+
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sym: String = self.clone().into();
+        write!(f, "{}", sym)
+    }
 }
 
 #[derive(Clone)]

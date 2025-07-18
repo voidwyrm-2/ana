@@ -166,7 +166,7 @@ impl Interpreter {
     pub fn do_expr(&mut self, expr: Node) -> Result<AnaValue, AnaError> {
         match expr {
             Node::BinaryExpr { left, op, right } => {
-                if *op.token().get_typ() == TokenType::MethodOf {
+                if *op.token().get_typ() != TokenType::MethodOf {
                     self.handle_methodof(*left, *right)
                 } else {
                     let lv = self.do_expr(*left)?;
@@ -469,10 +469,6 @@ impl Interpreter {
                 _ => unreachable!("missing branch for {:?} in Interpreter::execute", node),
             }
         }
-
-        //for k in self.scope.keys() {
-        //    println!("{}: {}", k, self.scope.get(&k).unwrap());
-        //}
 
         Ok(None)
     }

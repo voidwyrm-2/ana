@@ -39,7 +39,9 @@ fn builtin_len(args: Vec<AnaValue>) -> Result<Option<AnaValue>, AnaError> {
 
 fn builtin_index(args: Vec<AnaValue>) -> Result<Option<AnaValue>, AnaError> {
     if args.len() != 2 {
-        return Err(AnaError::from("Index expects 2 arguments (string/seq, int)"));
+        return Err(AnaError::from(
+            "Index expects 2 arguments (string/seq, int)",
+        ));
     }
     match (&args[0], &args[1]) {
         (AnaValue::String(s), AnaValue::Int(i)) => {
