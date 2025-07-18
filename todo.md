@@ -16,6 +16,7 @@
     - [ ] `Len [Any obj] -> Int`
     - [ ] `Get [Any obj, Any index] -> Error|Any`
     - [ ] `Set [Any obj, Any index, Any value] -> Error|Any`
+    - [ ] `Reduce [Any obj, Function fun] -> Any`
 - [x] `io`
     - [ ] `Out [String... args] -> Unit`
     - [ ] `Outc [Int char] -> Unit`
