@@ -1,0 +1,9 @@
+require "std/io".
+
+Print ← λ (self, args) {
+    io→Outln ["self:", self, "args:", args].
+}.
+
+obj ← 30.
+
+obj⇒Print [["hello", "there", "sir"]].

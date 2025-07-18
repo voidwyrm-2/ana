@@ -1,12 +1,14 @@
 require "std/io".
-require "std/table".
+require "std/tables".
 
-t ← table→Create [].
+; make aliases so we can more easily use them as methods
+Get ← tables→Get.
+Set ← tables→Set.
 
-io→Outln [Typeof [t]].
+t ← tables→Create [].
 
-table→Insert [t, "the_answer", 42].
+t2 ← t⇒Set ["the_answer", 42].
 
-the_answer ← table→Get [t, "the_answer"].
+the_answer ← t2⇒Get ["the_answer"].
 
-io→Outln [the_answer, t→the_answer].
+io→Outln [the_answer, t2→the_answer].

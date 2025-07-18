@@ -166,19 +166,24 @@ impl Interpreter {
     pub fn do_expr(&mut self, expr: Node) -> Result<AnaValue, AnaError> {
         match expr {
             Node::BinaryExpr { left, op, right } => {
-                let lv = self.do_expr(*left)?;
-                let rv_e = self.do_expr(*right);
+                if *op.token().get_typ() == TokenType::MethodOf {
+                    self.handle_methodof(*left, *right)
+                } else {
+                    let lv = self.do_expr(*left)?;
 
-                let rv = rv_e?;
+                    let rv_e = self.do_expr(*right);
 
-                let operation = op.token().get_typ();
+                    let rv = rv_e?;
 
-                let result = match lv.op(operation, &rv) {
-                    Ok(r) => Ok(r),
-                    Err(e) => Err(token_anaerr!(op.token(), "{}", e)),
-                }?;
+                    let operation = op.token().get_typ();
 
-                Ok(result)
+                    let result = match lv.op(operation, &rv) {
+                        Ok(r) => Ok(r),
+                        Err(e) => Err(token_anaerr!(op.token(), "{}", e)),
+                    }?;
+
+                    Ok(result)
+                }
             }
             Node::Ident(path) => {
                 let mut now_value: Option<AnaValue> = None;
@@ -363,6 +368,33 @@ impl Interpreter {
         Ok(None)
     }
 
+    fn handle_methodof(&mut self, left: Node, right: Node) -> Result<AnaValue, AnaError> {
+        if let Node::FunctionCall { name, args } = right {
+            if let Node::Seq { start, contents } = *args {
+                let mut new_args: Vec<Node> = Vec::with_capacity(contents.len() + 1);
+
+                new_args.push(left);
+
+                contents.iter().for_each(|a| new_args.push(a.clone()));
+
+                self.do_expr(Node::FunctionCall {
+                    name: name,
+                    args: Box::new(Node::Seq {
+                        start: start.clone(),
+                        contents: new_args,
+                    }),
+                })
+            } else {
+                unreachable!()
+            }
+        } else {
+            Err(token_anaerr!(
+                right.token(),
+                "only functions can be used as methods",
+            ))
+        }
+    }
+
     pub fn execute_nodes(
         &mut self,
         nodes: Vec<Node>,
@@ -425,6 +457,13 @@ impl Interpreter {
                 Node::If { .. } => {
                     if let Some(value) = self.do_if(node, status.clone())? {
                         return Ok(Some(value));
+                    }
+                }
+                Node::BinaryExpr { left, op, right } => {
+                    if *op.token().get_typ() != TokenType::MethodOf {
+                        unreachable!();
+                    } else {
+                        _ = self.handle_methodof(*left, *right)?;
                     }
                 }
                 _ => unreachable!("missing branch for {:?} in Interpreter::execute", node),

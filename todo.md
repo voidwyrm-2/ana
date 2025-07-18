@@ -2,19 +2,20 @@
 
 ## Language Features
 
-- [ ] Method operator (analogous to Lua's `:`)
+- [x] Method operator (analogous to Lua's `:`)
 - [ ] Library module importing
 - [ ] Local module importing
+- [ ] Error Handling
 
 ## Stdlib Modules
 
 - [x] `io`
     - [ ] `OpenFile [String path, String mode] -> File`
-- [ ] `table`
-    - [ ] `Create [] -> Table`
+- [ ] `tables`
+    - [x] `Create [] -> Table`
     - [ ] `FromSeq [Seq(Seq(String, Any)) entries] -> Table(Any)`
-    - [ ] `Set [Table self, String key, Any value] -> Unit`
-    - [ ] `Get [Table self, String key] -> Any`
+    - [x] `Get [Table self, String key] -> Any`
+    - [x] `Set [Table self, String key, Any value] -> Unit`
     - [ ] `Remove [Table self, String key] -> Unit`
     - [ ] `ToSeq [Table self] -> Seq(Seq(String, Any))`
 - [ ] `strings`

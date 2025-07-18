@@ -130,9 +130,24 @@ impl Parser {
         self.last_node.push((node, false));
     }
 
+    fn pop_node(&mut self) -> Option<Node> {
+        _ = self.last_node.pop();
+
+        if self.block_nesting.len() > 0 {
+            self.block_nodes.pop()
+        } else {
+            self.nodes.pop()
+        }
+    }
+
     fn add_refered(&mut self, node: Node) {
         self.refer_stack.push(node.clone());
         self.last_node.push((node, true));
+    }
+
+    fn pop_refered(&mut self) -> Option<Node> {
+        _ = self.last_node.pop();
+        self.refer_stack.pop()
     }
 
     fn expect_t(&self, t: &Token, tt: TokenType) -> ParserResult {
@@ -299,11 +314,7 @@ impl Parser {
 
                         self.r#if(&start)?;
 
-                        block_false = Some(Box::new(if self.block_nesting.len() > 0 {
-                            self.block_nodes.pop().unwrap()
-                        } else {
-                            self.nodes.pop().unwrap()
-                        }));
+                        block_false = Some(Box::new(self.pop_node().unwrap()));
                     }
                 }
 
@@ -343,16 +354,9 @@ impl Parser {
                     self.eat();
                     self.list_stmt(&cur)?;
 
-                    self.last_node.pop();
-
-                    if self.block_nesting.len() > 0 {
-                        self.block_nodes.pop().unwrap()
-                    } else {
-                        self.nodes.pop().unwrap()
-                    }
+                    self.pop_node().unwrap()
                 } else {
-                    self.last_node.pop();
-                    self.refer_stack.pop().unwrap()
+                    self.pop_refered().unwrap()
                 }
             }
             TokenType::ParenLeft => {
@@ -371,12 +375,12 @@ impl Parser {
             TokenType::BracketLeft => {
                 self.list(&lct)?;
 
-                self.refer_stack.pop().unwrap()
+                self.pop_refered().unwrap()
             }
             TokenType::Function => {
                 self.function(&lct)?;
 
-                self.refer_stack.pop().unwrap()
+                self.pop_refered().unwrap()
             }
             _ => {
                 return Err(token_anaerr!(
@@ -395,11 +399,10 @@ impl Parser {
                 | TokenType::StatementEnding
                 | TokenType::Comma
                 | TokenType::ParenRight
-                | TokenType::BracketRight => {
-                    break;
-                }
+                | TokenType::BracketRight => break,
 
-                TokenType::Equals
+                TokenType::MethodOf
+                | TokenType::Equals
                 | TokenType::NotEquals
                 | TokenType::LessThan
                 | TokenType::GreaterThan
@@ -409,6 +412,7 @@ impl Parser {
                 | TokenType::Multiply
                 | TokenType::Divide
                 | TokenType::Modulus => Node::Op(opt),
+
                 _ => {
                     return Err(token_anaerr!(
                         opt,
@@ -488,7 +492,11 @@ impl Parser {
 
         if let Some((last, is_deferred)) = self.last_node.last() {
             if let Node::Ident(_) = last {
-                is_call = true && *is_deferred;
+                if !*is_deferred {
+                    unreachable!();
+                }
+
+                is_call = true;
             }
         }
 
@@ -505,15 +513,36 @@ impl Parser {
         }
 
         if is_call {
-            let args = self.refer_stack.pop().unwrap();
-            let name = self.refer_stack.pop().unwrap();
+            let args = self.pop_refered().unwrap();
+            let name = self.pop_refered().unwrap();
 
-            self.add_node(Node::FunctionCall {
+            let fncall = Node::FunctionCall {
                 name: Box::new(name),
                 args: Box::new(args),
-            });
+            };
 
-            _ = self.last_node.pop();
+            if let Some((n, is_deferred)) = self.last_node.last() {
+                if let Node::Op(t) = n {
+                    if !*is_deferred {
+                        unreachable!();
+                    }
+
+                    if *t.get_typ() == TokenType::MethodOf {
+                        let op = self.pop_refered().unwrap();
+                        let left = self.pop_refered().unwrap();
+
+                        self.add_node(Node::BinaryExpr {
+                            left: Box::new(left),
+                            op: Box::new(op),
+                            right: Box::new(fncall),
+                        });
+
+                        return Ok(());
+                    }
+                }
+            }
+
+            self.add_node(fncall);
         }
 
         Ok(())
@@ -554,12 +583,16 @@ impl Parser {
                 TokenType::Bind => {
                     let expr = self.expr_inner(0)?;
                     self.idx -= 1;
-                    let name = self.refer_stack.pop().unwrap();
+                    let name = self.pop_refered().unwrap();
 
                     self.add_node(Node::Binding {
                         name: Box::new(name),
                         expr: Box::new(expr),
                     });
+                }
+                TokenType::MethodOf => {
+                    self.add_refered(Node::Op(cur));
+                    continue;
                 }
                 TokenType::BracketLeft => self.list_stmt(&cur)?,
                 TokenType::BraceLeft => {
@@ -583,7 +616,7 @@ impl Parser {
         self.block_nesting.clear();
         self.inner_parse()?;
 
-        if let Some(rt) = self.refer_stack.pop() {
+        if let Some(rt) = self.pop_refered() {
             Err(token_anaerr!(
                 rt.token(),
                 "unexpected token {:?}",
@@ -602,6 +635,7 @@ fn infix_binding_power(op: &TokenType) -> Option<(u16, u16)> {
         TokenType::Concat => Some((5, 6)),
         TokenType::LessThan | TokenType::GreaterThan => Some((7, 8)),
         TokenType::Equals | TokenType::NotEquals => Some((9, 10)),
+        TokenType::MethodOf => Some((20, 21)),
         _ => None,
     }
 }

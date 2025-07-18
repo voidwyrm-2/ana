@@ -8,8 +8,9 @@ use crate::{
     },
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum AnaType {
+    Any,
     Unit,
     Bool,
     Int,
@@ -21,12 +22,30 @@ pub enum AnaType {
     Data,
 }
 
+impl AnaType {
+    fn as_i32(&self) -> i32 {
+        match self {
+            AnaType::Any => 0,
+            AnaType::Unit => 1,
+            AnaType::Bool => 2,
+            AnaType::Int => 3,
+            AnaType::Float => 4,
+            AnaType::Seq => 5,
+            AnaType::String => 6,
+            AnaType::Table => 7,
+            AnaType::Function => 8,
+            AnaType::Data => 9,
+        }
+    }
+}
+
 impl Display for AnaType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
+                AnaType::Any => "Any",
                 AnaType::Unit => "Unit",
                 AnaType::Bool => "Bool",
                 AnaType::Int => "Int",
@@ -40,6 +59,21 @@ impl Display for AnaType {
         )
     }
 }
+
+impl PartialEq for AnaType {
+    fn eq(&self, other: &Self) -> bool {
+        let a = self.as_i32();
+        let b = other.as_i32();
+
+        a == b || a == 0 || b == 0
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !(self == other)
+    }
+}
+
+impl Eq for AnaType {}
 
 macro_rules! err_uncastable {
     ($self:expr, $into:expr) => {
@@ -192,7 +226,36 @@ impl AnaValue {
     }
 
     pub fn set_inner(&mut self, index: AnaValue, value: AnaValue) -> Result<(), AnaError> {
-        todo!("implement AnaValue::set_inner")
+        match self {
+            AnaValue::Seq(seq) => {
+                if let AnaValue::Int(ind) = index {
+                    seq[ind as usize] = value;
+                    Ok(())
+                } else {
+                    Err(AnaError::from(format!(
+                        "cannot index into {} with type {}",
+                        self.kind(),
+                        index.kind(),
+                    )))
+                }
+            }
+            AnaValue::Table(tab) => {
+                if let AnaValue::String(ind) = index {
+                    tab.insert(ind, value);
+                    Ok(())
+                } else {
+                    Err(AnaError::from(format!(
+                        "cannot index into {} with type {}",
+                        self.kind(),
+                        index.kind(),
+                    )))
+                }
+            }
+            _ => Err(AnaError::from(format!(
+                "cannot index into type {}",
+                self.kind()
+            ))),
+        }
     }
 
     pub fn cast(&self, into: AnaType) -> Result<AnaValue, AnaError> {
