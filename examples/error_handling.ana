@@ -1,5 +1,0 @@
-; Example: Error Handling in Ana
-require "std/io".
-
-; Ana may not have built-in error handling (try/catch), so this is a placeholder.
-ioOutln ["Ana does not currently support try/catch error handling."] 
