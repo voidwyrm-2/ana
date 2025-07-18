@@ -20,7 +20,7 @@
 - [x] `io`
     - [ ] `Out [String... args] -> Unit`
     - [ ] `Outc [Int char] -> Unit`
-    - [ ] `Outf [String fmt, Any... args] -> Unit`
+    - [ ] `Outf [String fmt, Seq(Any) args] -> Unit`
     - [ ] `OpenFile [String path, String mode] -> Error|File`
 - [ ] `tables`
     - [x] `Create [] -> Table`
@@ -31,6 +31,10 @@
     - [ ] `FromSeq [Seq(Int) chars] -> Error|String`
     - [ ] `ToSeq [String self] -> Seq(Int)`
     - [ ] `Split [String self, String sep] -> Seq(String)`
+- [ ] `sys`
+    - [ ] `Cmd [String name, Seq(Any) args] -> Error|CmdOutput`
+    - [ ] `Argv [] -> Seq(String)`
+    - [ ] `Info [] -> SysInfo`
 - [ ] `http`
     - [ ] `Get [String url] -> Error|Request`
     - [ ] `Post [String url, String data] -> Error|Request`
@@ -40,6 +44,8 @@
     - [ ] `Eval [String expr] -> Error|Any`
     - [ ] `Exec [String program] -> Error|Table`
     - [ ] `GetLocals [] -> Seq(Seq(String, Any))`
+    - [ ] `Version [] -> String`
+    - [ ] `Executable [] -> String`
 - [ ] `ffi`
     - [ ] `LoadNative [String name] -> Error|FFIModule`
     - [ ] `LoadWasm [String name] -> Error|FFIModule`
