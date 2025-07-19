@@ -24,7 +24,7 @@ pub enum Node {
         name: Box<Node>,
         expr: Box<Node>,
     },
-    Import((Token, Token)),
+    Require((Token, Token)),
     FunctionCall {
         name: Box<Node>,
         args: Box<Node>,
@@ -55,7 +55,7 @@ impl Node {
             Node::Seq { start: t, .. } => t,
             Node::Ident(v) => &v[0],
             Node::Binding { name: n, .. } => n.token(),
-            Node::Import((t, _)) => t,
+            Node::Require((t, _)) => t,
             Node::FunctionCall { name, .. } => name.token(),
             Node::Block(t, _) => t,
             Node::Function { start: t, .. } => t,
@@ -173,7 +173,7 @@ impl Parser {
 
         let name = self.next().clone();
 
-        self.add_node(Node::Import((start.clone(), name)));
+        self.add_node(Node::Require((start.clone(), name)));
 
         Ok(())
     }
@@ -299,33 +299,29 @@ impl Parser {
 
         let mut block_false: Option<Box<Node>> = None;
 
-        if let TokenType::Ident(ident) = self.cur().get_typ() {
-            if *ident == "else" {
+        if let TokenType::Else = self.cur().get_typ() {
+            self.eat();
+
+            let mut do_else = true;
+
+            if let TokenType::If = self.cur().get_typ() {
+                let start = self.cur().clone();
+
+                do_else = false;
                 self.eat();
 
-                let mut do_else = true;
+                self.r#if(&start)?;
 
-                if let TokenType::Ident(ident) = self.cur().get_typ() {
-                    if *ident == "if" {
-                        let start = self.cur().clone();
+                block_false = Some(Box::new(self.pop_node().unwrap()));
+            }
 
-                        do_else = false;
-                        self.eat();
+            if do_else {
+                self.expect(TokenType::BraceLeft)?;
+                self.eat();
 
-                        self.r#if(&start)?;
+                let block = self.block(&self.cur().clone())?;
 
-                        block_false = Some(Box::new(self.pop_node().unwrap()));
-                    }
-                }
-
-                if do_else {
-                    self.expect(TokenType::BraceLeft)?;
-                    self.eat();
-
-                    let block = self.block(&self.cur().clone())?;
-
-                    block_false = Some(Box::new(block));
-                }
+                block_false = Some(Box::new(block));
             }
         }
 
@@ -563,22 +559,11 @@ impl Parser {
                 TokenType::StatementEnding => self.idx -= 1,
                 TokenType::Ident(ident) => {
                     match ident.as_str() {
-                        "require" => self.import(&cur),
-                        "return" => {
-                            self.r#return(&cur)?;
-                            self.idx -= 1;
-
-                            Ok(())
-                        }
-                        "if" => {
-                            self.r#if(&cur)?;
-                            continue;
-                        }
                         _ => {
                             self.ident_path(&cur)?;
                             continue;
                         }
-                    }?;
+                    };
                 }
                 TokenType::Bind => {
                     let expr = self.expr_inner(0)?;
@@ -592,6 +577,15 @@ impl Parser {
                 }
                 TokenType::MethodOf => {
                     self.add_refered(Node::Op(cur));
+                    continue;
+                }
+                TokenType::Require => self.import(&cur)?,
+                TokenType::Return => {
+                    self.r#return(&cur)?;
+                    self.idx -= 1;
+                }
+                TokenType::If => {
+                    self.r#if(&cur)?;
                     continue;
                 }
                 TokenType::BracketLeft => self.list_stmt(&cur)?,

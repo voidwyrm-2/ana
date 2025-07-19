@@ -1,8 +1,8 @@
 require "std/io".
 
-InfFun ← λ () {
-    io→Outln ["Meow!"].
-    InfFun [].
+InfFun ← λ (n) {
+    io→Outln ["recursion:", n].
+    InfFun [n + 1].
 }.
 
-InfFun [].
+InfFun [1].

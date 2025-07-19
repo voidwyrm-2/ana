@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use crate::{
     common::AnaError,
     insert_f, insert_v,
-    runtime::types::{AnaFunction, AnaValue, TableMap},
+    runtime::{
+        stdlib::expect_args,
+        types::{AnaFunction, AnaType, AnaValue, TableMap},
+    },
 };
 
 pub fn get_builtins() -> TableMap {
@@ -17,7 +20,8 @@ pub fn get_builtins() -> TableMap {
 
     insert_f!(m, "Typeof", builtin_typeof);
     insert_f!(m, "Len", builtin_len);
-    insert_f!(m, "Index", builtin_index);
+    insert_f!(m, "Get", builtin_get);
+    insert_f!(m, "Set", builtin_set);
 
     m
 }
@@ -27,9 +31,7 @@ fn builtin_typeof(args: Vec<AnaValue>) -> Result<Option<AnaValue>, AnaError> {
 }
 
 fn builtin_len(args: Vec<AnaValue>) -> Result<Option<AnaValue>, AnaError> {
-    if args.len() != 1 {
-        return Err(AnaError::from("Len expects 1 argument"));
-    }
+    // TODO: make this more in line with Get and Set
     match &args[0] {
         AnaValue::String(s) => Ok(Some(AnaValue::Int(s.chars().count() as i32))),
         AnaValue::Seq(seq) => Ok(Some(AnaValue::Int(seq.len() as i32))),
@@ -37,29 +39,25 @@ fn builtin_len(args: Vec<AnaValue>) -> Result<Option<AnaValue>, AnaError> {
     }
 }
 
-fn builtin_index(args: Vec<AnaValue>) -> Result<Option<AnaValue>, AnaError> {
-    if args.len() != 2 {
-        return Err(AnaError::from(
-            "Index expects 2 arguments (string/seq, int)",
-        ));
-    }
-    match (&args[0], &args[1]) {
-        (AnaValue::String(s), AnaValue::Int(i)) => {
-            let idx = *i as usize;
-            if let Some(ch) = s.chars().nth(idx) {
-                Ok(Some(AnaValue::String(ch.to_string())))
-            } else {
-                Err(AnaError::from("Index out of bounds for String"))
-            }
-        }
-        (AnaValue::Seq(seq), AnaValue::Int(i)) => {
-            let idx = *i as usize;
-            if idx < seq.len() {
-                Ok(Some(seq[idx].clone()))
-            } else {
-                Err(AnaError::from("Index out of bounds for Seq"))
-            }
-        }
-        _ => Err(AnaError::from("Index expects (String, Int) or (Seq, Int)")),
-    }
+fn builtin_get(args: Vec<AnaValue>) -> Result<Option<AnaValue>, AnaError> {
+    expect_args(&args, [AnaType::Any, AnaType::Any])?;
+
+    let obj = args[0].clone();
+    let index = args[1].clone();
+
+    let result = obj.get_inner(index)?;
+
+    Ok(Some(result))
+}
+
+fn builtin_set(args: Vec<AnaValue>) -> Result<Option<AnaValue>, AnaError> {
+    expect_args(&args, [AnaType::Any, AnaType::Any, AnaType::Any])?;
+
+    let mut obj = args[0].clone();
+    let index = args[1].clone();
+    let value = args[2].clone();
+
+    obj.set_inner(index, value)?;
+
+    Ok(Some(obj))
 }

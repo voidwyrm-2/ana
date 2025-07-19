@@ -1,5 +1,7 @@
 use std::{any::Any, collections::HashMap, fmt::Display, rc::Rc};
 
+use unicode_segmentation::UnicodeSegmentation;
+
 use crate::{
     common::AnaError,
     grammar::{
@@ -119,6 +121,7 @@ macro_rules! ana_bool {
     };
 }
 
+/// Checks if a cast should happen or not for a specific operation
 fn is_nocast(operation: &TokenType, other: &AnaValue) -> bool {
     let op = match operation {
         TokenType::Equals | TokenType::NotEquals | TokenType::LessThan | TokenType::GreaterThan => {
@@ -135,6 +138,7 @@ fn is_nocast(operation: &TokenType, other: &AnaValue) -> bool {
     op && alt
 }
 
+/// Checks if self should be casted instead of other for a specific operation
 fn is_altcast(operation: &TokenType, other: &AnaValue) -> bool {
     let op = match operation {
         TokenType::Equals | TokenType::NotEquals | TokenType::LessThan | TokenType::GreaterThan => {
@@ -149,6 +153,14 @@ fn is_altcast(operation: &TokenType, other: &AnaValue) -> bool {
     };
 
     op && alt
+}
+
+/// Checks if the operands should be switched
+fn is_altexpr(left: &AnaValue, right: &AnaValue) -> bool {
+    (match right {
+        AnaValue::String(_) | AnaValue::Seq(_) => true,
+        _ => false,
+    }) && left.kind() != right.kind()
 }
 
 pub type TableMap = HashMap<String, AnaValue>;
@@ -198,6 +210,16 @@ impl AnaValue {
                         index.kind(),
                     )))
                 }
+            }
+            AnaValue::String(str) => {
+                let graph: Vec<&str> = str.graphemes(true).collect();
+
+                let values: Vec<AnaValue> = graph
+                    .iter()
+                    .map(|g| AnaValue::String(g.to_string()))
+                    .collect();
+
+                AnaValue::Seq(values).get_inner(index)
             }
             AnaValue::Table(tab) => {
                 if let AnaValue::String(ref ind) = index {
@@ -354,22 +376,6 @@ impl AnaValue {
     }
 
     pub fn op(&self, operation: &TokenType, other: &AnaValue) -> Result<AnaValue, AnaError> {
-        // String concatenation: only allow string ⊂ string
-        if let AnaValue::String(str) = self {
-            if let AnaValue::String(other_str) = other {
-                match *operation {
-                    TokenType::Concat => return Ok(AnaValue::String(str.clone() + other_str)),
-                    TokenType::Equals => return Ok(ana_bool!(*str == *other_str)),
-                    TokenType::NotEquals => return Ok(ana_bool!(*str != *other_str)),
-                    _ => {
-                        return Err(AnaError::from(format!(
-                            "unsupported operation '{}' for String + String",
-                            operation
-                        )));
-                    }
-                }
-            }
-        }
         if let AnaValue::Seq(arr) = self {
             if let AnaValue::Seq(other_arr) = other {
                 if *operation == TokenType::Concat {
@@ -406,13 +412,43 @@ impl AnaValue {
             } else {
                 let mut new_arr: Vec<AnaValue> = Vec::new();
 
-                for i in 0..arr.len() {
-                    new_arr.push(arr[i].op(operation, other)?);
+                if *operation == TokenType::Concat {
+                    for value in arr {
+                        new_arr.push(value.clone());
+                    }
+
+                    new_arr.push(other.clone());
+                } else {
+                    for i in 0..arr.len() {
+                        new_arr.push(arr[i].op(operation, other)?);
+                    }
                 }
 
                 Ok(AnaValue::Seq(new_arr))
             }
+        } else if let AnaValue::String(str) = self {
+            if let AnaValue::String(other_str) = other {
+                let result = match *operation {
+                    TokenType::Concat => AnaValue::String(str.clone() + other_str),
+                    TokenType::Equals => ana_bool!(*str == *other_str),
+                    TokenType::NotEquals => ana_bool!(*str != *other_str),
+                    _ => {
+                        return Err(AnaError::from(format!(
+                            "unsupported operation '{}' for String + String",
+                            operation
+                        )));
+                    }
+                };
+
+                Ok(result)
+            } else {
+                self.cast(AnaType::Seq)?.op(operation, other)
+            }
         } else {
+            if is_altexpr(self, other) {
+                return other.op(operation, self);
+            }
+
             let own_casted = if is_altcast(operation, other) && self.kind() != other.kind() {
                 self.cast(other.kind())?
             } else {

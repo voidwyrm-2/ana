@@ -166,7 +166,7 @@ impl Interpreter {
     pub fn do_expr(&mut self, expr: Node) -> Result<AnaValue, AnaError> {
         match expr {
             Node::BinaryExpr { left, op, right } => {
-                if *op.token().get_typ() != TokenType::MethodOf {
+                if *op.token().get_typ() == TokenType::MethodOf {
                     self.handle_methodof(*left, *right)
                 } else {
                     let lv = self.do_expr(*left)?;
@@ -423,7 +423,7 @@ impl Interpreter {
 
                     return Ok(Some(result));
                 }
-                Node::Import((_, path)) => {
+                Node::Require((_, path)) => {
                     expect_global!(status, path, "imports");
 
                     if let TokenType::String(str) = path.get_typ() {

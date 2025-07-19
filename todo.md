@@ -3,7 +3,8 @@
 ## Language Features
 
 - [x] Method operator (analogous to Lua's `:`)
-- [ ] Error Handling
+- [ ] Error handling
+- [ ] If expressions
 - [ ] Local module importing
 - [ ] `case` statements
 - [ ] Library module importing
@@ -13,9 +14,9 @@
 - [ ] builtins
     - [ ] `Exit [Int code] -> Unit`
     - [ ] `Error [Any... args] -> Error`
-    - [ ] `Len [Any obj] -> Int`
-    - [ ] `Get [Any obj, Any index] -> Error|Any`
-    - [ ] `Set [Any obj, Any index, Any value] -> Error|Any`
+    - [x] `Len [Any obj] -> Int`
+    - [x] `Get [Any obj, Any index] -> Error|Any`
+    - [x] `Set [Any obj, Any index, Any value] -> Error|Any`
     - [ ] `Reduce [Any obj, Function fun] -> Any`
 - [x] `io`
     - [ ] `Out [String... args] -> Unit`

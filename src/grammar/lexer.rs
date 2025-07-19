@@ -28,7 +28,11 @@ pub enum TokenType {
     Bind,
     IdentPathSep,
     MethodOf,
+    Require,
     Function,
+    Return,
+    If,
+    Else,
     Comma,
     ParenLeft,
     ParenRight,
@@ -65,7 +69,11 @@ impl Into<String> for TokenType {
                 Self::Bind => "←",
                 Self::IdentPathSep => "→",
                 Self::MethodOf => "⇒",
+                Self::Require => "require",
                 Self::Function => "λ",
+                Self::Return => "return",
+                Self::If => "if",
+                Self::Else => "else",
                 Self::Comma => ",",
                 Self::ParenLeft => "(",
                 Self::ParenRight => ")",
@@ -265,7 +273,15 @@ impl<'a> Lexer<'a> {
             self.adv();
         }
 
-        Token::new(TokenType::Ident(str), startcol, startln)
+        let tt = match str.as_str() {
+            "require" => TokenType::Require,
+            "return" => TokenType::Return,
+            "if" => TokenType::If,
+            "else" => TokenType::Else,
+            _ => TokenType::Ident(str),
+        };
+
+        Token::new(tt, startcol, startln)
     }
 
     fn collect_string(&mut self) -> Result<Token, AnaError> {
