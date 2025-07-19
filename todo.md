@@ -14,16 +14,15 @@
     - [ ] `Exit [Int] -> Unit`
     - [ ] `Error [...Any] -> Error`
     - [ ] `Len [Any] -> Int`
-    - [ ] `Index [Any, Int] -> Error|Any`
+    - [ ] `Get [Any, Any] -> Error|Any`
+    - [ ] `Set [Any, Any] -> Error|Any`
 - [x] `io`
     - [ ] `OpenFile [String path, String mode] -> Error|File`
 - [ ] `tables`
     - [x] `Create [] -> Table`
     - [ ] `FromSeq [Seq(Seq(String, Any)) entries] -> Table(Any)`
-    - [x] `Get [Table self, String key] -> Error|Any`
-    - [x] `Set [Table self, String key, Any value] -> Unit`
-    - [ ] `Remove [Table self, String key] -> Error|Unit`
     - [ ] `ToSeq [Table self] -> Seq(Seq(String, Any))`
+    - [ ] `Remove [Table self, String key] -> Error|Unit`
 - [ ] `strings`
     - [ ] `FromSeq [Seq(Int) chars] -> Error|String`
     - [ ] `ToSeq [String self] -> Seq(Int)`
@@ -39,10 +38,13 @@
 ## Ecosystem
 
 - [ ] Documentation
-    - [ ] Operator list
-    - [ ] Stdlib module list
+    - [ ] Language Tour
+    - [ ] Language Reference
+        - [ ] Operator list
+        - [ ] Stdlib module list
+- [ ] Testing
 
-## Far Future
+## Future
 
 > Note: these are in order of importance/difficulty
 

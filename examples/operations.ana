@@ -1,7 +1,7 @@
 require "std/io".
 
-s ← "hello".
-i ← 0.
+_1 ← 20 + 2.
+io→Outln [_1].
 
 _2 ← 20 - 2.
 io→Outln [_2].
@@ -18,5 +18,8 @@ io→Outln [_5].
 _6 ← 20 ≠ 2.
 io→Outln [_6].
 
-_7 ← "20" ⊂ "2".
+_7 ← "20".
 io→Outln [_7].
+
+_8 ← "20" ⊂ "2".
+io→Outln [_8].

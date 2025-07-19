@@ -1,4 +1,4 @@
 ; Example module for import
-MyFun  (x) {
+MyFun ← λ (x) {
     return x * 2.
 }. 
