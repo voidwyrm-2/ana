@@ -11,6 +11,7 @@ pub enum Node {
     Int(Token),
     Float(Token),
     String(Token),
+    Ident(Token),
     Op(Token),
     BinaryExpr {
         left: Box<Node>,
@@ -21,7 +22,6 @@ pub enum Node {
         start: Token,
         contents: Vec<Node>,
     },
-    Ident(Vec<Token>),
     Binding {
         name: Box<Node>,
         expr: Box<Node>,
@@ -52,10 +52,10 @@ impl Node {
             Self::Int(t) => t,
             Self::Float(t) => t,
             Self::String(t) => t,
+            Self::Ident(t) => t,
             Self::Op(t) => t,
             Self::BinaryExpr { left: n, .. } => n.token(),
             Self::Seq { start: t, .. } => t,
-            Self::Ident(v) => &v[0],
             Self::Binding { name: n, .. } => n.token(),
             Self::Require((t, _)) => t,
             Self::FunctionCall { name, .. } => name.token(),
@@ -66,9 +66,20 @@ impl Node {
         }
     }
 
+    pub fn is_primitive(&self) -> bool {
+        match self {
+            Self::Int(_) | Self::Float(_) | Self::String(_) | Self::Ident(_) | Self::Op(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_composite(&self) -> bool {
+        !self.is_primitive()
+    }
+
     pub fn formt(&self, indent: usize) -> String {
         let fmt = match self {
-            Self::Int(_) | Self::Float(_) | Self::String(_) | Self::Op(_) => {
+            Self::Int(_) | Self::Float(_) | Self::String(_) | Self::Ident(_) | Self::Op(_) => {
                 format!("{:?}", self)
             }
 
@@ -87,16 +98,6 @@ impl Node {
                     .join(",\n ");
 
                 format!("Seq [\n {},\n]", seqf)
-            }
-
-            Self::Ident(path) => {
-                let pathf = path
-                    .iter()
-                    .map(|tok| format!("{}", tok))
-                    .collect::<Vec<String>>()
-                    .join(",\n ");
-
-                format!("Ident [\n {},\n]", pathf)
             }
 
             Self::Binding { name, expr } => format!(
@@ -184,8 +185,7 @@ pub struct Parser {
     tokens: Vec<Token>,
     refer_stack: Vec<Node>,
     nodes: Vec<Node>,
-    block_nodes: Vec<Node>,
-    block_nesting: Vec<u8>,
+    block_nodes: Vec<Vec<Node>>,
     last_node: Vec<(Node, bool)>,
 }
 
@@ -197,7 +197,6 @@ impl Parser {
             refer_stack: Vec::new(),
             nodes: Vec::new(),
             block_nodes: Vec::new(),
-            block_nesting: Vec::new(),
             last_node: Vec::new(),
         }
     }
@@ -225,16 +224,21 @@ impl Parser {
     }
 
     fn prev(&self) -> Option<&Token> {
-        if self.idx != 0 {
-            Some(&self.tokens[self.idx - 1])
+        self.prev_by(1)
+    }
+
+    fn prev_by(&self, offset: usize) -> Option<&Token> {
+        if offset < self.idx {
+            Some(&self.tokens[self.idx - offset])
         } else {
             None
         }
     }
 
     fn add_node(&mut self, node: Node) {
-        if self.block_nesting.len() > 0 {
-            self.block_nodes.push(node.clone());
+        if self.block_nodes.len() > 0 {
+            let len = self.block_nodes.len();
+            self.block_nodes[len - 1].push(node.clone());
         } else {
             self.nodes.push(node.clone());
         }
@@ -245,10 +249,20 @@ impl Parser {
     fn pop_node(&mut self) -> Option<Node> {
         _ = self.last_node.pop();
 
-        if self.block_nesting.len() > 0 {
-            self.block_nodes.pop()
+        if self.block_nodes.len() > 0 {
+            let len = self.block_nodes.len();
+            self.block_nodes[len - 1].pop()
         } else {
             self.nodes.pop()
+        }
+    }
+
+    fn nodes_len(&self) -> usize {
+        if self.block_nodes.len() > 0 {
+            let len = self.block_nodes.len();
+            self.block_nodes[len - 1].len()
+        } else {
+            self.nodes.len()
         }
     }
 
@@ -276,8 +290,7 @@ impl Parser {
     }
 
     fn expect(&self, tt: TokenType) -> ParserResult {
-        let t = &self.tokens[self.idx];
-        self.expect_t(t, tt)
+        self.expect_t(self.cur(), tt)
     }
 
     fn import(&mut self, start: &Token) -> ParserResult {
@@ -295,54 +308,26 @@ impl Parser {
 
         self.add_node(Node::Return((start.clone(), Box::new(expr))));
 
-        Ok(())
-    }
-
-    fn ident_path(&mut self, start: &Token) -> ParserResult {
-        if *self.cur().get_typ() != TokenType::IdentPathSep {
-            self.add_refered(Node::Ident(vec![start.clone()]));
-            return Ok(());
-        }
-
-        let mut sep = true;
-        let mut path_nodes: Vec<Token> = vec![start.clone()];
-
-        loop {
-            if sep {
-                self.expect(TokenType::IdentPathSep)?;
-                sep = false;
-            } else {
-                sep = true;
-            }
-
-            let cur = self.next();
-
-            if variant_eq(cur.get_typ(), &TokenType::Ident(String::new())) {
-                path_nodes.push(cur.clone());
-
-                if let Some(peeked) = self.peek() {
-                    if *peeked.get_typ() != TokenType::IdentPathSep {
-                        break;
-                    }
-                }
+        if let Some(tok) = self.prev() {
+            if *tok.get_typ() == TokenType::StatementEnding {
+                self.idx -= 1;
             }
         }
-
-        self.add_refered(Node::Ident(path_nodes));
 
         Ok(())
     }
 
     fn block(&mut self, start: &Token) -> Result<Node, AnaError> {
-        self.block_nesting.push(0);
-        self.inner_parse()?;
-        _ = self.block_nesting.pop();
+        self.block_nodes.push(Vec::new());
+        self.parse_inner()?;
 
-        let node = Node::Block(start.clone(), self.block_nodes.clone());
+        self.idx -= 1;
+        self.expect(TokenType::BraceRight)?;
+        self.eat();
 
-        self.block_nodes = Vec::new();
+        let inner = self.block_nodes.pop().unwrap();
 
-        Ok(node)
+        Ok(Node::Block(start.clone(), inner))
     }
 
     fn function_args(&mut self) -> Result<Vec<Token>, AnaError> {
@@ -378,7 +363,7 @@ impl Parser {
         Ok(arg_tokens)
     }
 
-    fn function(&mut self, start: &Token) -> ParserResult {
+    fn function(&mut self, start: &Token) -> Result<Node, AnaError> {
         self.expect(TokenType::ParenLeft)?;
         self.eat();
 
@@ -386,24 +371,30 @@ impl Parser {
 
         let block_start = self.next().clone();
         let block = self.block(&block_start)?;
-        self.eat();
 
-        self.add_refered(Node::Function {
+        Ok(Node::Function {
             start: start.clone(),
             args: args,
             block: Box::new(block),
-        });
-
-        self.idx -= 1;
-
-        Ok(())
+        })
     }
 
-    fn r#if(&mut self, start: &Token) -> ParserResult {
+    fn r#if(&mut self, start: &Token) -> Result<Node, AnaError> {
         self.expect(TokenType::ParenLeft)?;
         self.eat();
 
         let expr = self.expr_inner(0)?;
+
+        if let Some(tok) = self.prev() {
+            if *tok.get_typ() == TokenType::ParenRight {
+                self.idx -= 1;
+            }
+        }
+
+        self.expect(TokenType::ParenRight)?;
+        self.eat();
+
+        self.expect(TokenType::BraceLeft)?;
 
         let bt_start = self.next().clone();
 
@@ -422,9 +413,9 @@ impl Parser {
                 do_else = false;
                 self.eat();
 
-                self.r#if(&start)?;
+                let subif = self.r#if(&start)?;
 
-                block_false = Some(Box::new(self.pop_node().unwrap()));
+                block_false = Some(Box::new(subif));
             }
 
             if do_else {
@@ -437,14 +428,12 @@ impl Parser {
             }
         }
 
-        self.add_node(Node::If {
+        Ok(Node::If {
             start: start.clone(),
             expr: Box::new(expr),
             block_true: Box::new(block_true),
             block_false: block_false,
-        });
-
-        Ok(())
+        })
     }
 
     fn expr_inner(&mut self, min_bp: u16) -> Result<Node, AnaError> {
@@ -454,19 +443,7 @@ impl Parser {
             TokenType::Int(_) => Node::Int(lct),
             TokenType::Float(_) => Node::Float(lct),
             TokenType::String(_) => Node::String(lct),
-            TokenType::Ident(_) => {
-                self.ident_path(&lct)?;
-
-                let cur = self.cur().clone();
-                if let TokenType::BracketLeft = cur.get_typ() {
-                    self.eat();
-                    self.list_stmt(&cur)?;
-
-                    self.pop_node().unwrap()
-                } else {
-                    self.pop_refered().unwrap()
-                }
-            }
+            TokenType::Ident(_) => Node::Ident(lct),
             TokenType::ParenLeft => {
                 let lhs = self.expr_inner(0);
 
@@ -480,16 +457,8 @@ impl Parser {
 
                 lhs?
             }
-            TokenType::BracketLeft => {
-                self.list(&lct)?;
-
-                self.pop_refered().unwrap()
-            }
-            TokenType::Function => {
-                self.function(&lct)?;
-
-                self.pop_refered().unwrap()
-            }
+            TokenType::BracketLeft => self.list(&lct)?,
+            TokenType::Function => self.function(&lct)?,
             _ => {
                 return Err(token_anaerr!(
                     lct,
@@ -505,11 +474,13 @@ impl Parser {
             let op = match opt.get_typ() {
                 TokenType::Eof
                 | TokenType::StatementEnding
+                | TokenType::Bind
                 | TokenType::Comma
                 | TokenType::ParenRight
                 | TokenType::BracketRight => break,
 
                 TokenType::MethodOf
+                | TokenType::FieldOf
                 | TokenType::Equals
                 | TokenType::NotEquals
                 | TokenType::LessThan
@@ -520,6 +491,10 @@ impl Parser {
                 | TokenType::Multiply
                 | TokenType::Divide
                 | TokenType::Modulus => Node::Op(opt),
+
+                TokenType::BracketLeft => {
+                    return self.list_stmt(&opt, Some(lhs.clone()));
+                }
 
                 _ => {
                     return Err(token_anaerr!(
@@ -561,9 +536,16 @@ impl Parser {
         Ok(lhs)
     }
 
-    fn list(&mut self, start: &Token) -> ParserResult {
+    fn list(&mut self, start: &Token) -> Result<Node, AnaError> {
         let mut comma = false;
         let mut list_nodes: Vec<Node> = vec![];
+
+        if *self.cur().get_typ() == TokenType::BracketRight {
+            return Ok(Node::Seq {
+                start: start.clone(),
+                contents: list_nodes,
+            });
+        }
 
         loop {
             if comma {
@@ -580,147 +562,143 @@ impl Parser {
 
             if *cur.get_typ() == TokenType::BracketRight {
                 self.eat();
+
                 break;
             } else if *cur.get_typ() != TokenType::Comma {
                 unreachable!("expected Comma, but found '{}' instead", cur.get_typ())
             }
         }
 
-        self.add_refered(Node::Seq {
+        Ok(Node::Seq {
             start: start.clone(),
             contents: list_nodes,
+        })
+    }
+
+    // not actually a statement, but I couldn't think of a better name
+    fn list_stmt(&mut self, start: &Token, call_expr: Option<Node>) -> Result<Node, AnaError> {
+        let seq = self.list(start)?;
+
+        if let Some(name) = call_expr {
+            Ok(Node::FunctionCall {
+                name: Box::new(name),
+                args: Box::new(seq),
+            })
+        } else {
+            Ok(seq)
+        }
+    }
+
+    fn bind(&mut self, name: Node) -> ParserResult {
+        let expr = self.expr_inner(0)?;
+
+        if let Some(tok) = self.prev() {
+            if *tok.get_typ() == TokenType::StatementEnding {
+                self.idx -= 1;
+            }
+        }
+
+        self.add_node(Node::Binding {
+            name: Box::new(name),
+            expr: Box::new(expr),
         });
 
         Ok(())
     }
 
-    // not actually a statement, but I couldn't think of a better name
-    fn list_stmt(&mut self, start: &Token) -> ParserResult {
-        let mut is_call = false;
-
-        if let Some((last, is_deferred)) = self.last_node.last() {
-            if let Node::Ident(_) = last {
-                if !*is_deferred {
-                    unreachable!();
-                }
-
-                is_call = true;
-            }
-        }
-
-        // special condition for []
-        if let TokenType::BracketRight = self.cur().get_typ() {
-            self.add_refered(Node::Seq {
-                start: start.clone(),
-                contents: Vec::new(),
-            });
-
-            self.eat();
-        } else {
-            self.list(start)?;
-        }
-
-        if is_call {
-            let args = self.pop_refered().unwrap();
-            let name = self.pop_refered().unwrap();
-
-            let fncall = Node::FunctionCall {
-                name: Box::new(name),
-                args: Box::new(args),
-            };
-
-            if let Some((n, is_deferred)) = self.last_node.last() {
-                if let Node::Op(t) = n {
-                    if !*is_deferred {
-                        unreachable!();
-                    }
-
-                    if *t.get_typ() == TokenType::MethodOf {
-                        let op = self.pop_refered().unwrap();
-                        let left = self.pop_refered().unwrap();
-
-                        self.add_node(Node::BinaryExpr {
-                            left: Box::new(left),
-                            op: Box::new(op),
-                            right: Box::new(fncall),
-                        });
-
-                        return Ok(());
-                    }
-                }
-            }
-
-            self.add_node(fncall);
-        }
-
-        Ok(())
-    }
-
-    fn inner_parse(&mut self) -> ParserResult {
+    fn parse_inner(&mut self) -> ParserResult {
         loop {
             let cur = self.next().clone();
 
-            if let TokenType::BraceRight = cur.get_typ() {
-                if self.block_nesting.len() > 0 {
+            if *cur.get_typ() == TokenType::BraceRight {
+                if self.block_nodes.len() > 0 {
                     break;
                 }
             }
 
             match cur.get_typ() {
                 TokenType::Eof => break,
-                TokenType::StatementEnding => self.idx -= 1,
-                TokenType::Ident(ident) => {
-                    match ident.as_str() {
-                        _ => {
-                            self.ident_path(&cur)?;
-                            continue;
-                        }
-                    };
-                }
-                TokenType::Bind => {
-                    let expr = self.expr_inner(0)?;
-                    self.idx -= 1;
-                    let name = self.pop_refered().unwrap();
 
-                    self.add_node(Node::Binding {
-                        name: Box::new(name),
-                        expr: Box::new(expr),
-                    });
+                TokenType::StatementEnding => self.idx -= 1,
+
+                TokenType::Ident(_) => {
+                    let tok = self.cur();
+
+                    match tok.get_typ() {
+                        TokenType::FieldOf => {
+                            self.idx -= 1;
+                            let expr = self.expr_inner(0)?;
+
+                            if *self.cur().get_typ() == TokenType::Bind {
+                                return Err(token_anaerr!(
+                                    self.cur(),
+                                    "{}",
+                                    "cannot assign to composite identifier"
+                                ));
+                            } else {
+                                self.add_node(expr);
+                            }
+                        }
+                        TokenType::Bind => {
+                            self.eat();
+                            self.bind(Node::Ident(cur))?
+                        }
+                        _ => self.add_node(Node::Ident(cur)),
+                    }
                 }
+
+                TokenType::Int(_)
+                | TokenType::Float(_)
+                | TokenType::String(_)
+                | TokenType::ParenLeft
+                | TokenType::BracketLeft
+                | TokenType::Function => {
+                    self.idx -= 1;
+                    let expr = self.expr_inner(0)?;
+
+                    self.add_node(expr);
+                }
+
                 TokenType::MethodOf => {
                     self.add_refered(Node::Op(cur));
                     continue;
                 }
+
                 TokenType::Require => self.import(&cur)?,
-                TokenType::Return => {
-                    self.r#return(&cur)?;
-                    self.idx -= 1;
-                }
+
+                TokenType::Return => self.r#return(&cur)?,
+
                 TokenType::If => {
-                    self.r#if(&cur)?;
+                    let ifstmt = self.r#if(&cur)?;
+
+                    self.add_node(ifstmt);
+
                     continue;
                 }
-                TokenType::BracketLeft => self.list_stmt(&cur)?,
+
                 TokenType::BraceLeft => {
+                    self.eat();
+
                     let block = self.block(&cur)?;
 
                     self.add_node(block);
 
                     continue;
                 }
+
                 _ => return Err(token_anaerr!(cur, "unexpected token '{}'", cur.get_typ(),)),
             }
 
-            let t = self.next().clone();
-            self.expect_t(&t, TokenType::StatementEnding)?;
+            self.expect(TokenType::StatementEnding)?;
+            self.eat();
         }
 
         Ok(())
     }
 
     pub fn parse(&mut self) -> Result<Vec<Node>, AnaError> {
-        self.block_nesting.clear();
-        self.inner_parse()?;
+        self.block_nodes.clear();
+        self.parse_inner()?;
 
         if let Some(rt) = self.pop_refered() {
             Err(token_anaerr!(
@@ -741,6 +719,7 @@ fn infix_binding_power(op: &TokenType) -> Option<(u16, u16)> {
         TokenType::Concat => Some((5, 6)),
         TokenType::LessThan | TokenType::GreaterThan => Some((7, 8)),
         TokenType::Equals | TokenType::NotEquals => Some((9, 10)),
+        TokenType::FieldOf => Some((18, 19)),
         TokenType::MethodOf => Some((20, 21)),
         _ => None,
     }

@@ -149,31 +149,33 @@ impl Interpreter {
     }
 
     pub fn enter_scope(&mut self) {
-        //println!("before enter: {:?}", self.scope);
         let parent = Box::new(self.scope.clone());
         self.scope = Scope::new(Some(parent), None);
-        //println!("after enter: {:?}", self.scope);
     }
 
     pub fn exit_scope(&mut self) {
-        //println!("before exit: {:?}", self.scope);
         if let Some(parent) = &self.scope.parent {
             self.scope = *parent.clone();
         }
-        //println!("after exit: {:?}", self.scope);
     }
 
-    pub fn do_expr(&mut self, expr: Node) -> Result<AnaValue, AnaError> {
+    pub fn do_expr_inner(
+        &mut self,
+        expr: Node,
+        prev_value: Option<AnaValue>,
+    ) -> Result<AnaValue, AnaError> {
         match expr {
             Node::BinaryExpr { left, op, right } => {
                 if *op.token().get_typ() == TokenType::MethodOf {
                     self.handle_methodof(*left, *right)
+                } else if *op.token().get_typ() == TokenType::FieldOf {
+                    let lv = self.do_expr(*left)?;
+
+                    self.do_expr_inner(*right, Some(lv))
                 } else {
                     let lv = self.do_expr(*left)?;
 
-                    let rv_e = self.do_expr(*right);
-
-                    let rv = rv_e?;
+                    let rv = self.do_expr(*right)?;
 
                     let operation = op.token().get_typ();
 
@@ -185,34 +187,25 @@ impl Interpreter {
                     Ok(result)
                 }
             }
-            Node::Ident(path) => {
-                let mut now_value: Option<AnaValue> = None;
+            Node::Ident(ident) => {
+                if let TokenType::Ident(name) = ident.get_typ() {
+                    if let Some(value) = prev_value {
+                        let inner_value = match value.get_inner(AnaValue::String(name.clone())) {
+                            Ok(r) => Ok(r),
+                            Err(e) => Err(token_anaerr!(ident, "{}", e)),
+                        }?;
 
-                for part in path {
-                    if let TokenType::Ident(name) = part.get_typ() {
-                        if now_value.is_none() {
-                            if let Some(value) = self.scope.get(name) {
-                                now_value = Some(value.clone());
-                            } else {
-                                return Err(token_anaerr!(part, "'{}' doesn't exist", name));
-                            }
-                        } else {
-                            let unwrapped = now_value.unwrap();
-
-                            let inner_value =
-                                match unwrapped.get_inner(AnaValue::String(name.clone())) {
-                                    Ok(r) => Ok(r),
-                                    Err(e) => Err(token_anaerr!(part, "{}", e)),
-                                }?;
-
-                            now_value = Some(inner_value);
-                        }
+                        Ok(inner_value)
                     } else {
-                        unreachable!()
+                        if let Some(value) = self.scope.get(name) {
+                            Ok(value.clone())
+                        } else {
+                            Err(token_anaerr!(ident, "'{}' doesn't exist", name))
+                        }
                     }
+                } else {
+                    unreachable!()
                 }
-
-                Ok(now_value.unwrap())
             }
             Node::Int(v) => {
                 let val = match v.get_typ() {
@@ -248,7 +241,7 @@ impl Interpreter {
                 Ok(AnaValue::Seq(values))
             }
             Node::FunctionCall { name, args } => {
-                let fun = self.do_expr(*name.clone())?;
+                let fun = self.do_expr_inner(*name.clone(), prev_value)?;
 
                 let args_seq = if let AnaValue::Seq(seq) = self.do_expr(*args.clone())? {
                     seq
@@ -313,8 +306,15 @@ impl Interpreter {
                     unreachable!()
                 }
             }
-            _ => unreachable!("missing branch for {:?} in Interpreter::do_expr", expr),
+            _ => unreachable!(
+                "missing branch for {:?} in Interpreter::do_expr_inner",
+                expr
+            ),
         }
+    }
+
+    pub fn do_expr(&mut self, expr: Node) -> Result<AnaValue, AnaError> {
+        self.do_expr_inner(expr, None)
     }
 
     pub fn do_if(&mut self, node: Node, status: ScopeStatus) -> Result<Option<AnaValue>, AnaError> {
@@ -459,14 +459,7 @@ impl Interpreter {
                         return Ok(Some(value));
                     }
                 }
-                Node::BinaryExpr { left, op, right } => {
-                    if *op.token().get_typ() != TokenType::MethodOf {
-                        unreachable!();
-                    } else {
-                        _ = self.handle_methodof(*left, *right)?;
-                    }
-                }
-                _ => unreachable!("missing branch for {:?} in Interpreter::execute", node),
+                _ => _ = self.do_expr(node)?,
             }
         }
 
