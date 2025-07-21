@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     common::{variant_eq, AnaError},
     grammar::lexer::{Token, TokenType},
@@ -47,21 +49,131 @@ pub enum Node {
 impl Node {
     pub fn token(&self) -> &Token {
         match self {
-            Node::Int(t) => t,
-            Node::Float(t) => t,
-            Node::String(t) => t,
-            Node::Op(t) => t,
-            Node::BinaryExpr { left: n, .. } => n.token(),
-            Node::Seq { start: t, .. } => t,
-            Node::Ident(v) => &v[0],
-            Node::Binding { name: n, .. } => n.token(),
-            Node::Require((t, _)) => t,
-            Node::FunctionCall { name, .. } => name.token(),
-            Node::Block(t, _) => t,
-            Node::Function { start: t, .. } => t,
-            Node::Return((t, _)) => t,
-            Node::If { start: t, .. } => t,
+            Self::Int(t) => t,
+            Self::Float(t) => t,
+            Self::String(t) => t,
+            Self::Op(t) => t,
+            Self::BinaryExpr { left: n, .. } => n.token(),
+            Self::Seq { start: t, .. } => t,
+            Self::Ident(v) => &v[0],
+            Self::Binding { name: n, .. } => n.token(),
+            Self::Require((t, _)) => t,
+            Self::FunctionCall { name, .. } => name.token(),
+            Self::Block(t, _) => t,
+            Self::Function { start: t, .. } => t,
+            Self::Return((t, _)) => t,
+            Self::If { start: t, .. } => t,
         }
+    }
+
+    pub fn formt(&self, indent: usize) -> String {
+        let fmt = match self {
+            Self::Int(_) | Self::Float(_) | Self::String(_) | Self::Op(_) => {
+                format!("{:?}", self)
+            }
+
+            Self::BinaryExpr { left, op, right } => format!(
+                "BinaryExpr {{\n left: {},\n op: {},\n right: {},\n}}",
+                left.formt(indent + 1),
+                op.formt(indent + 1),
+                right.formt(indent + 1),
+            ),
+
+            Self::Seq { contents, .. } => {
+                let seqf = contents
+                    .iter()
+                    .map(|node| node.formt(indent + 1))
+                    .collect::<Vec<String>>()
+                    .join(",\n ");
+
+                format!("Seq [\n {},\n]", seqf)
+            }
+
+            Self::Ident(path) => {
+                let pathf = path
+                    .iter()
+                    .map(|tok| format!("{}", tok))
+                    .collect::<Vec<String>>()
+                    .join(",\n ");
+
+                format!("Ident [\n {},\n]", pathf)
+            }
+
+            Self::Binding { name, expr } => format!(
+                "Binding {{\n name: {},\n expr: {},\n}}",
+                name.formt(indent + 1),
+                expr.formt(indent + 1)
+            ),
+
+            Self::Require((_, str)) => format!("Require({})", str),
+
+            Self::FunctionCall { name, args } => format!(
+                "FunctionCall {{\n name: {},\n args: {},\n}}",
+                name.formt(indent + 1),
+                args.formt(indent + 1)
+            ),
+
+            Self::Block(_, nodes) => {
+                let nodesf = nodes
+                    .iter()
+                    .map(|node| node.formt(indent + 1))
+                    .collect::<Vec<String>>()
+                    .join(",\n ");
+
+                format!("Block [\n {},\n]", nodesf)
+            }
+
+            Self::Function { args, block, .. } => {
+                let argsf = args
+                    .iter()
+                    .map(|tok| format!("{:?}", tok))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+
+                format!(
+                    "Function {{\n args: ({}),\n block: {},\n\n}}",
+                    argsf,
+                    block.formt(indent + 1)
+                )
+            }
+
+            Self::Return((_, expr)) => format!("Return {{\n expr: {},\n}}", expr.formt(indent + 1)),
+
+            Self::If {
+                expr,
+                block_true,
+                block_false,
+                ..
+            } => format!(
+                "If {{\n expr: {},\n block_true: {},\n block_false: {},\n}}",
+                expr.formt(indent + 1),
+                block_true.formt(indent + 1),
+                if let Some(block) = block_false {
+                    block.formt(indent + 1)
+                } else {
+                    String::new()
+                },
+            ),
+        };
+
+        let mut pad = String::new();
+
+        for _ in 0..indent {
+            pad.push(' ');
+        }
+
+        fmt.lines()
+            .map(|line| pad.clone() + line)
+            .collect::<Vec<String>>()
+            .join("\n")
+            .trim()
+            .to_owned()
+    }
+}
+
+impl Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.formt(0))
     }
 }
 

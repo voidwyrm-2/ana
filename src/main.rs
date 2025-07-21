@@ -62,7 +62,11 @@ fn main() {
     };
 
     if args.tokens {
-        println!("{:?}", tokens);
+        println!("tokens:");
+
+        for (i, token) in tokens.iter().enumerate() {
+            println!(" {}: {}", i, token);
+        }
     }
 
     let mut parser = AnaParser::new(tokens);
@@ -78,7 +82,7 @@ fn main() {
         println!("nodes:");
 
         for (i, node) in nodes.iter().enumerate() {
-            println!(" {}: {:?}", i, node);
+            println!(" {}: {}", i, node.formt(2));
         }
     }
 
